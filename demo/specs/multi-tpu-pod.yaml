@@ -1,0 +1,53 @@
+# One pod, one container
+# container asking for 4 distinct tpus
+
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: tpu-test
+
+---
+apiVersion: resource.k8s.io/v1beta1
+kind: ResourceClaimTemplate
+metadata:
+  namespace: tpu-test
+  name: multi-tpu
+spec:
+  spec:
+    devices:
+      requests:
+      - name: tpus
+        deviceClassName: tpu.google.com
+        count: 4
+
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  namespace: tpu-test
+  name: multi-tpu-pod
+  labels:
+    app: pod
+spec:
+  containers:
+  - name: ctr0
+    image: busybox:latest
+    command:
+        - /bin/sh
+        - -c
+        - |
+          echo "Environment Variables:"
+          env
+          echo "Listing device mounts:"
+          ls /dev/ | grep 'accel'
+          echo "Listing log mounts:"
+          ls /tmp
+          echo "Sleeping indefinitely..."
+          sleep infinity
+    resources:
+      claims:
+      - name: tpus
+  resourceClaims:
+  - name: tpus
+    resourceClaimTemplateName: multi-tpu
