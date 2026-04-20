@@ -1,0 +1,192 @@
+---
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: {{ include "dra-driver-google-tpu.fullname" . }}-kubeletplugin
+  namespace: {{ include "dra-driver-google-tpu.namespace" . }}
+  labels:
+    {{- include "dra-driver-google-tpu.labels" . | nindent 4 }}
+spec:
+  selector:
+    matchLabels:
+      {{- include "dra-driver-google-tpu.selectorLabels" . | nindent 6 }}
+  {{- with .Values.kubeletPlugin.updateStrategy }}
+  updateStrategy:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  template:
+    metadata:
+      {{- with .Values.kubeletPlugin.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+        {{- include "dra-driver-google-tpu.templateLabels" . | nindent 8 }}
+    spec:
+      hostNetwork: true
+      {{- if .Values.kubeletPlugin.priorityClassName }}
+      priorityClassName: {{ .Values.kubeletPlugin.priorityClassName }}
+      {{- end }}
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "dra-driver-google-tpu.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.kubeletPlugin.podSecurityContext | nindent 8 }}
+      initContainers:
+      - name: "tpu-network-optimization"
+        image: "gcr.io/gke-release/tpu_network_optimizer:tpu_network_optimizer_20250625.00_p0@sha256:0404b7f8ce86b25284a844ee4935c8927cd2572c1d6b07d1d2bd944f215fb80d"
+        securityContext:
+          privileged: true
+        command:
+        - /tpu_network_optimizer.sh
+        volumeMounts:
+        - name: sys
+          mountPath: /sys
+        - name: proc
+          mountPath: /proc
+      containers:
+      - name: tpu-dra-plugin
+        securityContext:
+          {{- toYaml .Values.kubeletPlugin.containers.plugin.securityContext | nindent 10 }}
+        image: {{ include "dra-driver-google-tpu.fullimage" . }}
+        imagePullPolicy: {{ .Values.image.pullPolicy }}
+        command: ["tpu-dra-kubeletplugin"]
+        resources:
+          {{- toYaml .Values.kubeletPlugin.containers.plugin.resources | nindent 10 }}
+        env:
+        - name: CDI_ROOT
+          value: /var/run/cdi
+        - name: KUBELET_REGISTRAR_DIRECTORY_PATH
+          value: {{ .Values.kubeletPlugin.kubeletRegistrarDirectoryPath | quote }}
+        - name: KUBELET_PLUGINS_DIRECTORY_PATH
+          value: {{ .Values.kubeletPlugin.kubeletPluginsDirectoryPath | quote }}
+        - name: NODE_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: spec.nodeName
+        - name: POD_NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        - name: POD_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        - name: NODE_IP
+          valueFrom:
+            fieldRef:
+              fieldPath: status.hostIP
+        - name: DEVICE_CLASSES
+          value: {{ .Values.deviceClasses | join "," }}
+        volumeMounts:
+        - name: plugins-registry
+          mountPath: {{ .Values.kubeletPlugin.kubeletRegistrarDirectoryPath | quote }}
+        - name: plugins
+          mountPath: {{ .Values.kubeletPlugin.kubeletPluginsDirectoryPath | quote }}
+        - name: cdi
+          mountPath: /var/run/cdi
+        - name: sys
+          mountPath: /sys
+        - name: proc
+          mountPath: /proc
+        - name: dev
+          mountPath: /dev
+        - name: pod-resources
+          mountPath: /var/lib/kubelet/pod-resources
+        - name: tpu-logs
+          mountPath: /tmp/tpu_logs
+      - name: sidecar-log-collector
+        image: "gcr.io/gke-release/gke-distroless/bash:gke_distroless_20250807.00_p0@sha256:4de2c75a1f363c26c4f74bdd702d313410267c464a059b4fa32ac5d4cf10aba9"
+        securityContext:
+          runAsUser: 1000
+          runAsGroup: 1000
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          capabilities:
+            drop:
+            - ALL
+          seccompProfile:
+            type: RuntimeDefault
+        resources:
+          requests:
+            cpu: 20m
+            memory: 20Mi
+          limits:
+            memory: 20Mi
+        args: [/bin/sh, -c, '
+          tail -n+1 -F /tmp/tpu_logs/tpu_driver.INFO & pid=$!;
+          trap "kill -15 $pid; wait $pid" SIGTERM;
+          wait $pid;
+          ']
+        volumeMounts:
+        - name: tpu-logs
+          readOnly: true
+          mountPath: /tmp/tpu_logs
+      - name: vbar-control-agent
+        image: "gcr.io/gke-release/vbar_control_agent@sha256:631a35b6cc0638b3eed328ccea240199043dcfe4bed69c7cfc3d98752faa23fb"
+        env:
+        - name: TPU_SKIP_MDS_QUERY
+          value: 'true'
+        - name: TPU_ON_GKE
+          value: 'true'
+        securityContext:
+          privileged: true
+          readOnlyRootFilesystem: true
+          seccompProfile:
+            type: RuntimeDefault
+        resources:
+          requests:
+            memory: 150Mi
+            cpu: 10m
+          limits:
+            memory: 150Mi
+        command: ["vbar_control_agent_files/bin/vbar_control_agent"]
+        args: ['--logtostderr', '--census_enabled=false', '--gid=', '--uid=', '--chroot=']
+      volumes:
+      - name: plugins-registry
+        hostPath:
+          path: {{ .Values.kubeletPlugin.kubeletRegistrarDirectoryPath | quote }}
+      - name: plugins
+        hostPath:
+          path: {{ .Values.kubeletPlugin.kubeletPluginsDirectoryPath | quote }}
+      - name: cdi
+        hostPath:
+          path: /var/run/cdi
+      - name: dev
+        hostPath:
+          path: /dev
+          type: DirectoryOrCreate
+      - name: pod-resources
+        hostPath:
+          path: /var/lib/kubelet/pod-resources
+          type: DirectoryOrCreate
+      - name: tpu-env
+        hostPath:
+          path: /etc/tpu
+          type: DirectoryOrCreate
+      - name: tpu-logs
+        hostPath:
+          path: /tmp/tpu_logs
+          type: DirectoryOrCreate
+      - name: sys
+        hostPath:
+          path: /sys
+          type: Directory
+      - name: proc
+        hostPath:
+          path: /proc
+          type: Directory
+      {{- with .Values.kubeletPlugin.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.kubeletPlugin.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.kubeletPlugin.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
