@@ -25,7 +25,7 @@ SCRIPTS_DIR="$(cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd)"
 : ${DRIVER_NAME:=dra-driver-google-tpu}
 
 # The registry, image and tag for the Google TPU DRA driver
-: ${REGISTRY:="registry.k8s.io/dra-driver-google-tpu"}
+: ${REGISTRY:="registry.k8s.io/dra-driver-google"}
 : ${IMAGE:="${DRIVER_NAME}"}
 : ${TAG:="v$(cat $(git rev-parse --show-toplevel)/deployments/helm/${DRIVER_NAME}/Chart.yaml | grep appVersion | sed 's/"//g' | sed -n 's/^appVersion: //p')"}
 
