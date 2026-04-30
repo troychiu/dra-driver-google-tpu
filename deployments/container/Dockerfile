@@ -13,7 +13,7 @@
 # limitations under the License.
 
 ARG GOLANG_VERSION=undefined
-FROM google-go.pkg.dev/golang:1.24.11 as build
+FROM google-go.pkg.dev/golang:1.26.0 as build
 
 WORKDIR /build
 COPY . .

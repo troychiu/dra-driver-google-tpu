@@ -15,7 +15,7 @@ jobs:
   golang:
     uses: ./.github/workflows/golang.yaml
     with:
-      golang_version: "1.24.0"
+      golang_version: "1.26.0"
 
   helm:
     uses: ./.github/workflows/helm.yaml
