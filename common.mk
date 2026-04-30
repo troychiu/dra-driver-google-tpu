@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-GOLANG_VERSION ?= 1.24.0
+GOLANG_VERSION ?= 1.26.0
 
 DRIVER_NAME := dra-driver-google-tpu
 MODULE := sigs.k8s.io/$(DRIVER_NAME)
