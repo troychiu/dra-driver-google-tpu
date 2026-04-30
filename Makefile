@@ -76,3 +76,4 @@ image-push:
 release:
 	REGISTRY=$(REGISTRY) TAG=$(TAG) MULTI_ARCH=true demo/scripts/build-driver-image.sh
 	REGISTRY=$(REGISTRY) TAG=$(TAG) MULTI_ARCH=true demo/scripts/push-driver-image.sh
+	REGISTRY=$(REGISTRY) TAG=$(TAG) demo/scripts/push-driver-chart.sh

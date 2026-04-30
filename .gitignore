@@ -30,3 +30,6 @@ go.work
 # Gemini CLI related files.
 gemini-*.*
 /gemini-*/
+
+# Helm distribution directory
+/dist/
