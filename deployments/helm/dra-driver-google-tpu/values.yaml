@@ -13,7 +13,7 @@ deviceClasses: ["tpu"]
 
 imagePullSecrets: []
 image:
-  repository: registry.k8s.io/dra-driver-google-tpu
+  repository: registry.k8s.io/dra-driver-google/dra-driver-google-tpu
   pullPolicy: IfNotPresent
   # Overrides the image tag whose default is the chart appVersion.
   tag: ""
