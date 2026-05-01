@@ -16,6 +16,8 @@ CONTAINER_TOOL ?= docker
 MKDIR    ?= mkdir
 TR       ?= tr
 DIST_DIR ?= $(CURDIR)/dist
+RELEASE_TAG ?= $(shell git describe --tags --always --dirty)
+HELM ?= go run helm.sh/helm/v3/cmd/helm@v3.20.1
 
 include $(CURDIR)/common.mk
 
@@ -57,7 +59,7 @@ lint:
 	golangci-lint run ./...
 
 helm-lint:
-	helm lint --strict deployments/helm/dra-driver-google-tpu
+	$(HELM) lint --strict deployments/helm/dra-driver-google-tpu
 
 COVERAGE_FILE := coverage.out
 test: build cmds
@@ -74,6 +76,6 @@ image-push:
 	REGISTRY=$(REGISTRY) TAG=$(TAG) demo/scripts/push-driver-image.sh
 
 release:
-	REGISTRY=$(REGISTRY) TAG=$(TAG) MULTI_ARCH=true demo/scripts/build-driver-image.sh
-	REGISTRY=$(REGISTRY) TAG=$(TAG) MULTI_ARCH=true demo/scripts/push-driver-image.sh
-	REGISTRY=$(REGISTRY) TAG=$(TAG) demo/scripts/push-driver-chart.sh
+	REGISTRY=$(REGISTRY) TAG=$(RELEASE_TAG) MULTI_ARCH=true demo/scripts/build-driver-image.sh
+	REGISTRY=$(REGISTRY) TAG=$(RELEASE_TAG) MULTI_ARCH=true demo/scripts/push-driver-image.sh
+	REGISTRY=$(REGISTRY) TAG=$(RELEASE_TAG) HELM="$(HELM)"  demo/scripts/push-driver-chart.sh

@@ -6,7 +6,6 @@ steps:
 - name: gcr.io/k8s-staging-test-infra/gcb-docker-gcloud
   env:
   - REGISTRY=us-central1-docker.pkg.dev/k8s-staging-images/dra-driver-google
-  - TAG=$_GIT_TAG
   args:
   - make
   - release

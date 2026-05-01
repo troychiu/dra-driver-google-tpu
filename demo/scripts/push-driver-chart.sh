@@ -40,8 +40,10 @@ rm -f "${DIST_DIR}/${DRIVER_NAME}-*.tgz"
 HELM_VERSION="${CHART_VERSION:-${TAG#v}}"
 echo "HELM_VERSION=${HELM_VERSION}"
 
+HELM="${HELM:-helm}"
+
 # Package the helm chart with the specified version
-helm package deployments/helm/${DRIVER_NAME} --version "${HELM_VERSION}" --destination "${DIST_DIR}"
+${HELM} package deployments/helm/${DRIVER_NAME} --version "${HELM_VERSION}" --destination "${DIST_DIR}"
 
 # Push to OCI registry using the exact filename
-helm push "${DIST_DIR}/${DRIVER_NAME}-${HELM_VERSION}.tgz" "oci://${REGISTRY}/charts"
+${HELM} push "${DIST_DIR}/${DRIVER_NAME}-${HELM_VERSION}.tgz" "oci://${REGISTRY}/charts"
