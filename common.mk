@@ -17,7 +17,7 @@ GOLANG_VERSION ?= 1.26.0
 DRIVER_NAME := dra-driver-google-tpu
 MODULE := sigs.k8s.io/$(DRIVER_NAME)
 
-VERSION  ?= v0.3.0
+VERSION  ?=
 vVERSION := v$(VERSION:v%=%)
 
 VENDOR := google.com
