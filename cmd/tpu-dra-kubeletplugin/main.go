@@ -56,6 +56,7 @@ type Flags struct {
 
 	kubeletRegistrarDirectoryPath string
 	kubeletPluginsDirectoryPath   string
+	consumableShares              string
 
 	// TPU properties of the node. When left empty they are auto discovered.
 	tpuAccelerator   string
@@ -154,6 +155,18 @@ func newApp() *cli.App {
 			Destination: &flags.tpuEnvFilePath,
 			EnvVars:     []string{"TPU_ENV_FILE"},
 		},
+		&cli.StringFlag{
+			Name: "consumable-shares",
+			Usage: "How many ResourceClaims may share the TPU chips on a node: 'disabled', " +
+				"'unlimited', or a positive integer. Requires the ConsumableShares feature gate " +
+				"and a cluster with DRAConsumableCapacity enabled. Only single-host nodes can " +
+				"share; on a multi-host slice this setting is ignored. Note that sharing lets " +
+				"claims co-schedule and mount the same chips, it does not let two processes " +
+				"drive a chip at the same time.",
+			Value:       consumableSharesDisabled,
+			Destination: &flags.consumableShares,
+			EnvVars:     []string{"CONSUMABLE_SHARES"},
+		},
 	}
 	cliFlags = append(cliFlags, flags.kubeClientConfig.Flags()...)
 	cliFlags = append(cliFlags, featureGateConfig.Flags()...)
@@ -173,6 +186,9 @@ func newApp() *cli.App {
 		},
 		Action: func(c *cli.Context) error {
 			ctx := c.Context
+			if err := validateConsumableShares(flags.consumableShares); err != nil {
+				return err
+			}
 			flags.deviceClasses = sets.New[string](c.StringSlice("device-classes")...)
 			clientSets, err := flags.kubeClientConfig.NewClientSets()
 			if err != nil {

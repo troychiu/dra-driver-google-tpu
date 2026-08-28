@@ -53,9 +53,10 @@ type DeviceState struct {
 	checkpointManager checkpointmanager.CheckpointManager
 	tm                *tpuManager
 	publishchan       chan interface{}
+	sharesPolicy      consumableSharesPolicy
 }
 
-func NewDeviceState(config *Config, nodeLabels map[string]string, devDir string, publishChan chan interface{}) (*DeviceState, error) {
+func NewDeviceState(config *Config, nodeLabels map[string]string, devDir string, publishChan chan interface{}, sharesPolicy consumableSharesPolicy) (*DeviceState, error) {
 	klog.Info("Creating new DeviceState")
 
 	tm, err := NewTPUManager(nodeLabels, devDir)
@@ -88,6 +89,7 @@ func NewDeviceState(config *Config, nodeLabels map[string]string, devDir string,
 		checkpointManager: checkpointManager,
 		tm:                tm,
 		publishchan:       publishChan,
+		sharesPolicy:      sharesPolicy,
 	}
 
 	checkpoints, err := state.checkpointManager.ListCheckpoints()
