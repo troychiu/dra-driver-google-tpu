@@ -34,7 +34,7 @@ import (
 	"k8s.io/dynamic-resource-allocation/kubeletplugin"
 	"k8s.io/klog/v2"
 
-	"sigs.k8s.io/dra-driver-google-tpu/pkg/flags"
+	pkgflags "sigs.k8s.io/dra-driver-google-tpu/pkg/flags"
 )
 
 const (
@@ -48,8 +48,7 @@ const (
 )
 
 type Flags struct {
-	kubeClientConfig flags.KubeClientConfig
-	loggingConfig    *flags.LoggingConfig
+	kubeClientConfig pkgflags.KubeClientConfig
 
 	nodeName      string
 	cdiRoot       string
@@ -86,9 +85,9 @@ func main() {
 }
 
 func newApp() *cli.App {
-	flags := &Flags{
-		loggingConfig: flags.NewLoggingConfig(),
-	}
+	featureGateConfig := pkgflags.NewFeatureGateConfig()
+	loggingConfig := pkgflags.NewLoggingConfig()
+	flags := &Flags{}
 	cliFlags := []cli.Flag{
 		&cli.StringFlag{
 			Name:        "node-name",
@@ -157,7 +156,8 @@ func newApp() *cli.App {
 		},
 	}
 	cliFlags = append(cliFlags, flags.kubeClientConfig.Flags()...)
-	cliFlags = append(cliFlags, flags.loggingConfig.Flags()...)
+	cliFlags = append(cliFlags, featureGateConfig.Flags()...)
+	cliFlags = append(cliFlags, loggingConfig.Flags()...)
 
 	app := &cli.App{
 		Name:            "tpu-dra-kubeletplugin",
@@ -169,7 +169,7 @@ func newApp() *cli.App {
 			if c.Args().Len() > 0 {
 				return fmt.Errorf("arguments not supported: %v", c.Args().Slice())
 			}
-			return flags.loggingConfig.Apply()
+			return loggingConfig.Apply()
 		},
 		Action: func(c *cli.Context) error {
 			ctx := c.Context
